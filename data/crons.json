@@ -1,0 +1,16 @@
+[
+  {
+    "id": "daily_backup",
+    "schedule": "0 2 * * *",
+    "lastRun": "2026-02-13T02:00:00.000Z",
+    "lastResult": "success",
+    "note": "Daily backup completed successfully"
+  },
+  {
+    "id": "market_stats",
+    "schedule": "*/15 * * * *",
+    "lastRun": "2026-02-13T15:45:00.000Z",
+    "lastResult": "success",
+    "note": "Latest market stats collected"
+  }
+]

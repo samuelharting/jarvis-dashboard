@@ -1,0 +1,16 @@
+[
+  {
+    "id": "agent_trade_bot",
+    "name": "Trade Bot Agent",
+    "state": "running",
+    "lastSeen": "2026-02-13T14:30:00.000Z",
+    "summary": "Actively monitoring markets"
+  },
+  {
+    "id": "agent_weather",
+    "name": "Weather Monitor",
+    "state": "idle",
+    "lastSeen": "2026-02-13T12:15:00.000Z",
+    "summary": "No weather alerts"
+  }
+]
