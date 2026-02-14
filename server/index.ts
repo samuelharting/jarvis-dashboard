@@ -3,14 +3,14 @@ import cors from 'cors';
 import { healthRouter } from './routes/health.js';
 import { overviewRouter } from './routes/overview.js';
 import { sourcesRouter } from './routes/sources.js';
-import { botsRouter } from './routes/bots.js';
+import botsRouter from './routes/bots.js';
 
 const app = express();
 const PORT = 3031;
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: 'http://localhost:5174',
   credentials: true
 }));
 app.use(express.json());
