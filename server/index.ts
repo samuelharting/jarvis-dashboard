@@ -4,6 +4,7 @@ import { healthRouter } from './routes/health.js';
 import { overviewRouter } from './routes/overview.js';
 import { sourcesRouter } from './routes/sources.js';
 import botsRouter from './routes/bots.js';
+import tradingRouter from './routes/trading.js';
 
 const app = express();
 const PORT = 3031;
@@ -21,6 +22,7 @@ app.use('/api/health', healthRouter);
 app.use('/api/overview', overviewRouter);
 app.use('/api/sources', sourcesRouter);
 app.use('/api/bots', botsRouter);
+app.use('/api/trading', tradingRouter);
 
 // Start server
 app.listen(PORT, () => {
