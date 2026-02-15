@@ -5,6 +5,7 @@ import {
   cronsFileAuto, 
   botsDirAuto, 
   costsFile,
+  getBotDirectories,
   getOpenClawRoot,
   getDataRoot,
   exists
@@ -12,6 +13,7 @@ import {
 import { 
   readJsonFile, 
   readBotStatsFromDir,
+  readBotStatsFromAllDirs,
   normalizeAgent,
   normalizeCron 
 } from '../utils/parsers.js';
@@ -70,13 +72,16 @@ overviewRouter.get('/', async (req, res) => {
   }
   
   // Bots
-  const botsPath = await botsDirAuto();
-  sources.bots = botsPath;
-  const bots = await readBotStatsFromDir(botsPath);
+  const botDirectories = await getBotDirectories();
+  sources.bots = botDirectories.join('; ');
+  const bots = await readBotStatsFromAllDirs(botDirectories);
   
   if (bots.length === 0) {
-    const existsDir = await exists(botsPath);
-    warnings.push(`Bots source: ${botsPath} (${existsDir ? 'no valid bots' : 'directory missing'})`);
+    if (botDirectories.length === 0) {
+      warnings.push('Bots source: No bot directories found in standard auto-detect locations');
+    } else {
+      warnings.push(`Bots source: Found ${botDirectories.length} bot directories but no valid bots`);
+    }
   }
   
   // Costs (always from data root)

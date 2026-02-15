@@ -1,5 +1,5 @@
 import { readFile } from 'fs/promises';
-import { readdir } from 'fs/promises';
+import { readdir, stat } from 'fs/promises';
 import { join } from 'path';
 import { AgentStatus, CronJobStatus, BotStats } from '../../shared/types.js';
 
@@ -114,32 +114,57 @@ export const normalizeCron = (raw: any): CronJobStatus | null => {
   }
 };
 
-export const normalizeBot = (raw: any): BotStats | null => {
+export interface BotStatsWithHeartbeat extends BotStats {
+  lastHeartbeatUtc?: string;
+  heartbeatStatus?: 'green' | 'yellow' | 'red' | 'gray';
+  fleet?: string;
+  mode?: string;
+  status?: string;
+}
+
+export const normalizeBot = (raw: any): BotStatsWithHeartbeat | null => {
   try {
     if (!raw) return null;
 
-    const id = raw.id || raw.botId;
-    const name = raw.name || raw.botName;
-    const pnl = raw.paper_pnl || raw.pnl || raw.totalPnl || 0;
-    const dailyPnl = raw.daily_pnl || raw.dailyPnl || 0;
-    const trades = raw.trades || raw.totalTrades;
-    let winRate = raw.winRate || raw.winRatePct;
-
+    const id = raw.bot_name || raw.id || raw.botId;
+    const name = raw.bot_name || raw.name || raw.botName;
+    const pnl = typeof raw.paper_pnl === 'number' ? raw.paper_pnl : raw.pnl || 0;
+    const dailyPnl = typeof raw.daily_pnl === 'number' ? raw.daily_pnl : 0;
+    const trades = typeof raw.paper_trades === 'number' ? raw.paper_trades : raw.trades || 0;
+    let winRate = raw.win_rate || raw.winRate || raw.winRatePct;
+    
     if (typeof id !== 'string' || typeof name !== 'string') {
       return null;
     }
 
-    if (typeof pnl !== 'number' || typeof trades !== 'number') {
-      return null;
+    // Calculate heartbeat status
+    const lastHeartbeatUtc = raw.last_heartbeat_utc || raw.lastHeartbeatUtc;
+    let heartbeatStatus: 'green' | 'yellow' | 'red' | 'gray' = 'gray';
+    
+    if (lastHeartbeatUtc) {
+      const lastHeartbeat = new Date(lastHeartbeatUtc);
+      const now = new Date();
+      const minutesDiff = (now.getTime() - lastHeartbeat.getTime()) / (1000 * 60);
+      
+      if (minutesDiff < 5) {
+        heartbeatStatus = 'green';
+      } else if (minutesDiff < 30) {
+        heartbeatStatus = 'yellow';
+      } else {
+        heartbeatStatus = 'red';
+      }
     }
 
-    //normalize win rate
+    // Ensure numeric values
+    const numPnl = typeof pnl === 'number' ? pnl : parseFloat(pnl) || 0;
+    const numDailyPnl = typeof dailyPnl === 'number' ? dailyPnl : parseFloat(dailyPnl) || 0;
+    const numTrades = typeof trades === 'number' ? trades : parseInt(trades) || 0;
+
+    // Normalize win rate
     if (typeof winRate === 'number') {
-      // If provided as percentage (0-100), convert to 0-1
       if (winRate > 1 && winRate <= 100) {
         winRate = winRate / 100;
       }
-      // Ensure bounds
       winRate = Math.max(0, Math.min(1, winRate));
     } else {
       winRate = null;
@@ -148,16 +173,56 @@ export const normalizeBot = (raw: any): BotStats | null => {
     return {
       id,
       name,
-      pnl,
-      dailyPnl,
-      trades,
-      winRate
+      pnl: numPnl,
+      dailyPnl: numDailyPnl,
+      trades: numTrades,
+      winRate,
+      lastHeartbeatUtc,
+      heartbeatStatus,
+      fleet: raw.fleet,
+      mode: raw.mode,
+      status: raw.status
     };
   } catch {
     return null;
   }
 };
 
+export const readBotStatsFromAllDirs = async (dirPaths: string[]): Promise<BotStats[]> => {
+  const allBots: BotStats[] = [];
+
+  for (const dirPath of dirPaths) {
+    try {
+      const files = await readdir(dirPath, { withFileTypes: true });
+      
+      // Each file in the bots directory is a bot subdirectory
+      for (const entry of files) {
+        if (!entry.isDirectory()) continue;
+        
+        // Skip _killed folders
+        if (entry.name.startsWith('_killed')) continue;
+        
+        const botDirPath = join(dirPath, entry.name);
+        const statsPath = join(botDirPath, 'stats.json');
+        
+        // Read stats.json directly instead of scanning all JSON files
+        const data = await readJsonFile(statsPath);
+        
+        const normalizedBot = normalizeBot(data);
+        if (normalizedBot) {
+          allBots.push(normalizedBot);
+        }
+      }
+    } catch {
+      // Directory doesn't exist or can't be read, skip it
+      continue;
+    }
+  }
+
+  return allBots;
+};
+
+// Legacy function for single directory
 export const readBotStatsFromDir = async (dirPath: string) => {
   try {
     const botFiles = await listJsonFiles(dirPath);

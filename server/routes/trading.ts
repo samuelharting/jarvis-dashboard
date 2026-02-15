@@ -12,10 +12,10 @@ const getTradingDir = (): string => {
     return process.env.OPENCLAW_TRADING_PATH;
   }
   
-  // Priority 2: OpenClaw workspace
-  const openClawRoot = process.env.OPENCLAW_ROOT;
-  if (openClawRoot) {
-    return join(openClawRoot, 'trading');
+  // Priority 2: OpenClaw workspace (OPENCLAW_WORKSPACE or OPENCLAW_ROOT)
+  const workspaceRoot = process.env.OPENCLAW_WORKSPACE || process.env.OPENCLAW_ROOT;
+  if (workspaceRoot) {
+    return join(workspaceRoot, 'trading');
   }
   
   // Priority 3: Default relative to project
@@ -72,10 +72,15 @@ router.get('/pending', async (req, res) => {
     const pendingPath = join(tradingDir, 'pending.json');
     
     if (!await exists(pendingPath)) {
-      return res.status(404).json({ 
-        ok: false, 
-        error: 'pending_not_found',
-        message: `Pending trades file not found at ${pendingPath}` 
+      return res.json({
+        ok: true,
+        data: null,
+        errors: [{
+          endpoint: '/api/trading/pending',
+          message: 'Pending trades file not found',
+          code: 'pending_not_found',
+          path: pendingPath
+        }]
       });
     }
     
@@ -84,31 +89,39 @@ router.get('/pending', async (req, res) => {
     
     // Validate schema version
     if (pending.schema_version !== 1) {
-      return res.status(500).json({ 
-        ok: false, 
-        error: 'unsupported_schema_version', 
-        version: pending.schema_version,
-        message: 'Expected schema_version: 1' 
+      return res.json({
+        ok: true,
+        data: null,
+        errors: [{
+          endpoint: '/api/trading/pending',
+          message: 'Unsupported schema version',
+          code: 'unsupported_schema_version',
+          expected: 1,
+          actual: pending.schema_version
+        }]
       });
     }
     
     res.json({ 
       ok: true, 
       data: pending,
-      generated_at: pending.generated_at,
-      path: pendingPath 
+      errors: []
     });
   } catch (error: any) {
     console.error('Error loading pending trades:', error);
-    res.status(500).json({ 
-      ok: false, 
-      error: 'server_error',
-      message: error.message 
+    res.json({
+      ok: true,
+      data: null,
+      errors: [{
+        endpoint: '/api/trading/pending',
+        message: error.message,
+        code: 'server_error'
+      }]
     });
   }
 });
 
-// GET /api/trading/status (combined endpoint)
+// GET /api/trading/status (combined endpoint with graceful empty state)
 router.get('/status', async (req, res) => {
   try {
     const tradingDir = getTradingDir();
@@ -120,32 +133,75 @@ router.get('/status', async (req, res) => {
       exists(pendingPath)
     ]);
     
-    if (!scoreboardExists || !pendingExists) {
-      return res.status(404).json({
-        ok: false,
-        error: 'files_not_found',
-        scoreboard_exists: scoreboardExists,
-        pending_exists: pendingExists,
-        message: 'One or more trading files are missing'
+    const errors = [];
+    let scoreboard = null;
+    let pending = null;
+    
+    // Load scoreboard with error handling
+    if (scoreboardExists) {
+      try {
+        const scoreboardData = await readFile(scoreboardPath, 'utf-8');
+        const parsedScoreboard = JSON.parse(scoreboardData);
+        if (parsedScoreboard.schema_version === 1) {
+          scoreboard = parsedScoreboard;
+        } else {
+          errors.push({
+            endpoint: '/api/trading/scoreboard',
+            message: 'Unsupported schema version',
+            code: 'unsupported_schema_version',
+            expected: 1,
+            actual: parsedScoreboard.schema_version,
+            path: scoreboardPath
+          });
+        }
+      } catch (error: any) {
+        errors.push({
+          endpoint: '/api/trading/scoreboard',
+          message: `Error loading: ${error.message}`,
+          code: 'load_error',
+          path: scoreboardPath
+        });
+      }
+    } else {
+      errors.push({
+        endpoint: '/api/trading/scoreboard',
+        message: 'Scoreboard file not found',
+        code: 'scoreboard_not_found',
+        path: scoreboardPath
       });
     }
     
-    const [scoreboardData, pendingData] = await Promise.all([
-      readFile(scoreboardPath, 'utf-8'),
-      readFile(pendingPath, 'utf-8')
-    ]);
-    
-    const scoreboard = JSON.parse(scoreboardData);
-    const pending = JSON.parse(pendingData);
-    
-    // Validate schema versions
-    if (scoreboard.schema_version !== 1 || pending.schema_version !== 1) {
-      return res.status(500).json({
-        ok: false,
-        error: 'schema_mismatch',
-        scoreboard_version: scoreboard.schema_version,
-        pending_version: pending.schema_version,
-        message: 'Schema versions must be 1'
+    // Load pending with error handling
+    if (pendingExists) {
+      try {
+        const pendingData = await readFile(pendingPath, 'utf-8');
+        const parsedPending = JSON.parse(pendingData);
+        if (parsedPending.schema_version === 1) {
+          pending = parsedPending;
+        } else {
+          errors.push({
+            endpoint: '/api/trading/pending',
+            message: 'Unsupported schema version',
+            code: 'unsupported_schema_version',
+            expected: 1,
+            actual: parsedPending.schema_version,
+            path: pendingPath
+          });
+        }
+      } catch (error: any) {
+        errors.push({
+          endpoint: '/api/trading/pending',
+          message: `Error loading: ${error.message}`,
+          code: 'load_error',
+          path: pendingPath
+        });
+      }
+    } else {
+      errors.push({
+        endpoint: '/api/trading/pending',
+        message: 'Pending trades file not found',
+        code: 'pending_not_found',
+        path: pendingPath
       });
     }
     
@@ -153,8 +209,10 @@ router.get('/status', async (req, res) => {
       ok: true,
       data: {
         scoreboard,
-        pending
+        pending,
+        has_data: scoreboard !== null || pending !== null
       },
+      errors,
       generated_at: new Date().toISOString(),
       paths: {
         scoreboard: scoreboardPath,
@@ -163,10 +221,15 @@ router.get('/status', async (req, res) => {
     });
   } catch (error: any) {
     console.error('Error loading trading status:', error);
-    res.status(500).json({
-      ok: false,
-      error: 'server_error',
-      message: error.message
+    res.json({
+      ok: true,
+      data: null,
+      errors: [{
+        endpoint: '/api/trading/status',
+        message: error.message,
+        code: 'server_error'
+      }],
+      generated_at: new Date().toISOString()
     });
   }
 });

@@ -3,6 +3,7 @@ import { access } from 'fs/promises';
 import { constants } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { homedir } from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -86,6 +87,40 @@ export const botsDirAuto = async (): Promise<string> => {
   
   // NOTE: botsDirAuto returns the directory path, not individual files
   return join(getDataRoot(), 'bots');
+};
+
+// Get all bot directories for real bot data
+export const getBotDirectories = async (): Promise<string[]> => {
+  // Priority 1: OPENCLAW_BOTS_DIRS override - semicolon-separated list
+  if (process.env.OPENCLAW_BOTS_DIRS) {
+    const dirs = process.env.OPENCLAW_BOTS_DIRS.split(';').map(d => d.trim()).filter(Boolean);
+    const validDirs = [];
+    for (const dir of dirs) {
+      if (await exists(dir)) {
+        validDirs.push(dir);
+      }
+    }
+    return validDirs;
+  }
+
+  // Priority 2: OPENCLAW_WORKSPACE base
+  const base = process.env.OPENCLAW_WORKSPACE || getOpenClawRoot() || join(homedir(), '.openclaw', 'workspace');
+
+  const directories = [
+    join(base, "polymarket", "bots"),
+    join(base, "trading", "options", "bots"),
+    join(base, "trading", "futures", "bots")
+  ];
+
+  // Return only directories that exist
+  const existing = [];
+  for (const dir of directories) {
+    if (await exists(dir)) {
+      existing.push(dir);
+    }
+  }
+  
+  return existing;
 };
 
 // Legacy paths for reference (using new auto-detection)

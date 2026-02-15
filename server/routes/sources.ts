@@ -4,7 +4,7 @@ import {
   getOpenClawRoot, 
   agentsFileAuto, 
   cronsFileAuto, 
-  botsDirAuto, 
+  getBotDirectories,
   costsFile 
 } from '../utils/paths.js';
 
@@ -17,11 +17,11 @@ sourcesRouter.get('/', async (req, res) => {
   const [
     agentsPath,
     cronsPath, 
-    botsPath
+    botDirectories
   ] = await Promise.all([
     agentsFileAuto(),
     cronsFileAuto(),
-    botsDirAuto()
+    getBotDirectories()
   ]);
 
   res.json({
@@ -30,7 +30,7 @@ sourcesRouter.get('/', async (req, res) => {
     openClawRoot,
     agentsPath,
     cronsPath,
-    botsPath,
+    botsPath: botDirectories.join('; '),
     costsPath: costsFile()
   });
 });
