@@ -98,6 +98,34 @@ export const Navbar: React.FC = () => {
           >
             Trading
           </NavLink>
+          <NavLink
+            to="/ideas"
+            style={({ isActive }) => ({
+              color: isActive ? '#1d4ed8' : '#6b7280',
+              textDecoration: isActive ? 'none' : 'none',
+              padding: '0.5rem 0.75rem',
+              borderRadius: '0.375rem',
+              fontWeight: isActive ? '500' : '400',
+              borderBottom: isActive ? '2px solid #1d4ed8' : 'none',
+              marginBottom: isActive ? '-2px' : '0'
+            })}
+          >
+            Ideas
+          </NavLink>
+          <NavLink
+            to="/work-tracker"
+            style={({ isActive }) => ({
+              color: isActive ? '#1d4ed8' : '#6b7280',
+              textDecoration: isActive ? 'none' : 'none',
+              padding: '0.5rem 0.75rem',
+              borderRadius: '0.375rem',
+              fontWeight: isActive ? '500' : '400',
+              borderBottom: isActive ? '2px solid #1d4ed8' : 'none',
+              marginBottom: isActive ? '-2px' : '0'
+            })}
+          >
+            Work Tracker
+          </NavLink>
         </div>
       </div>
     </nav>

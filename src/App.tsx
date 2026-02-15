@@ -6,6 +6,8 @@ import { Bots } from './pages/Bots';
 import { Agents } from './pages/Agents';
 import { Cron } from './pages/Cron';
 import { Trading } from './pages/Trading';
+import Ideas from './components/Ideas/Ideas';
+import WorkTracker from './components/WorkTracker/WorkTracker';
 
 const App: React.FC = () => {
   return (
@@ -24,6 +26,8 @@ const App: React.FC = () => {
             <Route path="agents" element={<Agents />} />
             <Route path="cron" element={<Cron />} />
             <Route path="trading" element={<Trading />} />
+            <Route path="ideas" element={<Ideas />} />
+            <Route path="work-tracker" element={<WorkTracker />} />
             <Route path="*" element={<div style={{textAlign: 'center', padding: '4rem', color: '#666666'}}><h1>404</h1></div>} />
           </Route>
         </Routes>

@@ -30,6 +30,13 @@ const sections: SidebarSection[] = [
       { name: "Agents", path: "/agents", icon: "👥" },
       { name: "Cron Jobs", path: "/cron", icon: "⏰" },
     ]
+  },
+  {
+    title: "Jarvis",
+    items: [
+      { name: "Ideas", path: "/ideas", icon: "💡" },
+      { name: "Work Tracker", path: "/work-tracker", icon: "📋" },
+    ]
   }
 ];
 

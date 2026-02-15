@@ -1,6 +1,6 @@
 import { HealthResponse, OverviewResponse } from '../../shared/types';
 
-const API_BASE_URL = 'http://localhost:3031/api';
+const API_BASE_URL = 'http://127.0.0.1:3031/api';
 
 interface SourcesResponse {
   ok: true;
