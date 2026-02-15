@@ -23,6 +23,7 @@ export interface BotStats {
   id: string;
   name: string;
   pnl: number;
+  dailyPnl?: number;
   trades: number;
   winRate: number | null;
 }

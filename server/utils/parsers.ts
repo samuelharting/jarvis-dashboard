@@ -120,7 +120,8 @@ export const normalizeBot = (raw: any): BotStats | null => {
 
     const id = raw.id || raw.botId;
     const name = raw.name || raw.botName;
-    const pnl = raw.pnl || raw.totalPnl;
+    const pnl = raw.paper_pnl || raw.pnl || raw.totalPnl || 0;
+    const dailyPnl = raw.daily_pnl || raw.dailyPnl || 0;
     const trades = raw.trades || raw.totalTrades;
     let winRate = raw.winRate || raw.winRatePct;
 
@@ -148,6 +149,7 @@ export const normalizeBot = (raw: any): BotStats | null => {
       id,
       name,
       pnl,
+      dailyPnl,
       trades,
       winRate
     };
